@@ -149,14 +149,34 @@ void BagExtractor::LoadBag(std::string& bag_file_path, std::map<double, cv::Mat>
 			cv_bridge::CvImagePtr depthImgPtr;
 			try
 			{
-				depthImgPtr = cv_bridge::toCvCopy(*msgDepth, sensor_msgs::image_encodings::TYPE_16UC1);
+				if (msgDepth->encoding == "16UC1")
+					depthImgPtr = cv_bridge::toCvCopy(*msgDepth, sensor_msgs::image_encodings::TYPE_16UC1);
+				else if (msgDepth->encoding == "8UC1")
+					depthImgPtr = cv_bridge::toCvCopy(*msgDepth, sensor_msgs::image_encodings::TYPE_8UC1);
+				else if (msgDepth->encoding == "32FC1")
+				{
+					depthImgPtr = cv_bridge::toCvCopy(*msgDepth, sensor_msgs::image_encodings::TYPE_32FC1);
+				}//end else if
+				else
+					std::cerr << "Maybe an invalid depth map format" << std::endl;
+
+				if (depths.empty())
+					std::cout << "depth encoding: " << msgDepth->encoding << std::endl;
 			}catch (cv_bridge::Exception& e)
 			{
 				ROS_ERROR("cv_bridge exception: %s", e.what());
 				return;
 			}//end catch
 
-			cv::Mat depthImg = depthImgPtr->image;
+			cv::Mat depthImg;
+			if (msgDepth->encoding == "32FC1")
+			{
+				cv::Mat tmpImg = depthImgPtr->image;
+				tmpImg.convertTo(depthImg, CV_16UC1, 1000.0, 0.0);
+			}//end if
+			else
+				depthImg = depthImgPtr->image;
+
 			if (depthImg.empty())
 			{
 				std::cerr << "No image in depthImg" << std::endl;
